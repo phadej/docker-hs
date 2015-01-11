@@ -1,18 +1,22 @@
+{-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE GADTs             #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeFamilies      #-}
 
 module Network.Docker.Types where
 
 import           Control.Applicative
 import           Control.Lens.TH
-import           Control.Lens.TH
+import           Control.Monad.Free
 import           Data.Aeson
 import           Data.Aeson.TH
 import           Data.Bool
 import qualified Data.ByteString.Lazy   as BS
+import qualified Data.ByteString.Lazy   as L
 import           Data.Default
 import qualified Data.Map               as Map
 import qualified Data.Text              as T
@@ -23,7 +27,6 @@ import           Network.Wreq.Types     (Postable)
 
 type URL = String
 type ApiVersion = String
-type Endpoint = String
 
 type Tag = String
 type IP = String
@@ -35,8 +38,35 @@ data DockerClientOpts = DockerClientOpts {
     , baseUrl    :: URL
     } deriving (Show)
 
+data Endpoint =
+                VersionEndpoint
+              | ListContainersEndpoint
+              | ListImagesEndpoint
+              | CreateContainerEndpoint
+              | StartContainerEndpoint String
+              | StopContainerEndpoint String
+              | KillContainerEndpoint String
+              | RestartContainerEndpoint String
+              | PauseContainerEndpoint String
+              | UnpauseContainerEndpoint String
+              | ContainerLogsEndpoint String
 
-data ResourceId = ResourceId { _id :: String } deriving (Show, Eq)
+defaultClientOpts :: DockerClientOpts
+defaultClientOpts = DockerClientOpts
+                { apiVersion = "v1.12"
+                , baseUrl = "http://127.0.0.1:3128/"
+                }
+
+
+data HttpRequestF a =
+          Get URL
+        | Post URL Value
+  deriving ( Functor, Show )
+
+
+type HttpRequestM = Free HttpRequestF
+
+data ResourceId = ResourceId { _uuid :: String } deriving (Show, Eq)
 
 
 data DockerImage = DockerImage
